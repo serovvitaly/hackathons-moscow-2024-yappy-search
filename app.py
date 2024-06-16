@@ -1,12 +1,13 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask import jsonify
 from flask import request
 import psycopg2
 from elasticsearch import Elasticsearch
 import urllib3
-from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 import os
+from flask_cors import CORS, cross_origin
+from flask_swagger_ui import get_swaggerui_blueprint
 
 
 load_dotenv()
@@ -97,7 +98,7 @@ def search():
 def clean_search_result(rec):
     return {
         'link': rec['_source']['link'],
-        'likes': rec['_source']['likes'],
+    #    'likes': rec['_source']['likes'],
         'speech': rec['_source']['speech'],
         'description': rec['_source']['description'],
     }
@@ -143,6 +144,7 @@ def autocomplete():
 
     return jsonify({'results': list(map(clean_autocomplete_result, results))})
 
+
 def clean_autocomplete_result(rec):
     if 'speech' in rec['highlight']:
         return {
@@ -152,3 +154,21 @@ def clean_autocomplete_result(rec):
     return {
         'text': rec['highlight']['description'][0]
     }
+
+
+SWAGGER_URL = '/swagger'
+API_FILE_PATH = '/swagger/openapi-4.json'
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_FILE_PATH,
+    config={
+        'app_name': "Sample API"
+    }
+)
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+
+@app.route('/swagger/openapi-4.json')
+def swagger_yaml():
+    return send_from_directory(os.path.join(app.root_path, 'swagger'), 'openapi-4.json')
