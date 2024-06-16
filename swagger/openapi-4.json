@@ -1,0 +1,209 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Video Index Hackaton 2024 Yappy - OpenAPI 3.0",
+    "description": "Простое описание образца сервиса, через который будет осуществляться проверка решений участников команд"
+  },
+  "servers": [
+    {
+      "url": "http://185.50.202.156:8080"
+    }
+  ],
+  "paths": {
+    "/api/upload": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "summary": "Добавляет новое видео в хранилище - индекс",
+        "description": "Добавляет новое видео в хранилище - индекс",
+        "operationId": "addindex",
+        "requestBody": {
+          "description": "Добавляет новое видео в хранилище - индекс",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [{
+                  "$ref": "#/components/schemas/Video"
+                }, {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Video"
+                  }
+                }]
+              },
+              "examples": {
+                "example-1": {
+                  "summary": "Пример одной записи",
+                  "value": {
+                    "description": "#технологии #девайсы #technologies #гаджеты #смартчасы #умныечасы #миф",
+                    "link": "https://cdn-st.rutubelist.ru/media/f4/8d/0766c7c04bb1abb8bf57a83fa4e8/fhd.mp4"
+                  }
+                },
+                "example-2": {
+                  "summary": "Пример нескольких записей",
+                  "value": [{
+                    "description": "#технологии #девайсы #technologies #гаджеты #смартчасы #умныечасы #миф",
+                    "link": "https://cdn-st.rutubelist.ru/media/f4/8d/0766c7c04bb1abb8bf57a83fa4e8/fhd.mp4"
+                  }]
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Ищет наиболее релевантные видео под запрос",
+        "description": "Ищет наиболее релевантные видео под запрос",
+        "operationId": "seacrhVideo",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Текст, по которому, осущесвляется запрос",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Query"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Result"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/autocomplete": {
+      "get": {
+        "tags": [
+          "Autocomplete"
+        ],
+        "summary": "Ищет наиболее релевантные подсказки",
+        "description": "Ищет наиболее релевантные подсказки",
+        "operationId": "autocomplete",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Текст, по которому, осущесвляется запрос",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Query"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HintResult"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Video": {
+        "required": [
+          "link",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "example": "#технологии #девайсы #technologies #гаджеты #смартчасы #умныечасы #миф"
+          },
+          "link": {
+            "type": "string",
+            "example": "https://cdn-st.rutubelist.ru/media/f4/8d/0766c7c04bb1abb8bf57a83fa4e8/fhd.mp4"
+          }
+        }
+      },
+      "Query": {
+        "required": "query",
+        "type": "string",
+        "example": "технологии"
+      },
+      "Result": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "example": "#технологии #девайсы #technologies #гаджеты #смартчасы #умныечасы #миф"
+          },
+          "link": {
+            "type": "string",
+            "example": "https://cdn-st.rutubelist.ru/media/f4/8d/0766c7c04bb1abb8bf57a83fa4e8/fhd.mp4"
+          },
+          "speech": {
+            "type": "string",
+            "example": "В Китае создали НЛО. Это летающий дрон для одного человека. Дрон может летать со скоростью 50 км в час на высоте 200 метров."
+          }
+        }
+      },
+      "HintResult": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Моя новая <em>техни</em>ка расширения территории в Гондоре!"
+          }
+        }
+      }
+    }
+  }
+}
