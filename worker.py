@@ -3,15 +3,32 @@ import psycopg2
 import time
 import math
 import os
-import signal
 from elasticsearch import Elasticsearch
 import random
+from dotenv import load_dotenv
+
+
+load_dotenv()
+ELASTIC_HOST = os.getenv("ELASTIC_HOST")
+ELASTIC_USER = os.getenv("ELASTIC_USER")
+ELASTIC_PASSWORD = os.getenv("ELASTIC_PASSWORD")
+INDEX_NAME = os.getenv("INDEX_NAME")
+PGS_DBNAME = os.getenv("PGS_DBNAME")
+PGS_HOST = os.getenv("PGS_HOST")
+PGS_USER = os.getenv("PGS_USER")
+PGS_PASSWORD = os.getenv("PGS_PASSWORD")
+
 
 PID = os.getpid()
 
 ttm = math.trunc(time.time())
 
-conn = psycopg2.connect("dbname=yappy user=postgres host=database password=pass")
+conn = psycopg2.connect(
+    dbname=PGS_DBNAME,
+    host=PGS_HOST,
+    user=PGS_USER,
+    password=PGS_PASSWORD
+)
 cur = conn.cursor()
 
 
@@ -20,12 +37,12 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 es = Elasticsearch(
     hosts=[
         {
-            'host': 'elastic',
+            'host': ELASTIC_HOST,
             'port': 9200,
             'scheme': 'https'
         }
     ],
-    basic_auth=('elastic', 'MDDIR5KipT5cI=TdSYU2'),
+    basic_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
     verify_certs=False
 )
 
@@ -36,12 +53,6 @@ tm = math.trunc(time.time())
 model = whisper.load_model('large')
 print('Model loaded by ' + str((math.trunc(time.time()) - tm)) + ' secs')
 
-
-def handler(signum, frame):
-    print('Timeout')
-    raise Exception("end of time")
-
-signal.signal(signal.SIGALRM, handler)
 
 
 def recognize(thread):
@@ -99,7 +110,6 @@ def recognize_many(thread):
 
 
 def recognize_one(link):
-    signal.alarm(300)
     result = model.transcribe(link, fp16=False)
     return result["text"]
 

@@ -4,15 +4,36 @@ from flask import request
 import psycopg2
 from elasticsearch import Elasticsearch
 import urllib3
+from flask_cors import CORS, cross_origin
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
+ELASTIC_HOST = os.getenv("ELASTIC_HOST")
+ELASTIC_USER = os.getenv("ELASTIC_USER")
+ELASTIC_PASSWORD = os.getenv("ELASTIC_PASSWORD")
+INDEX_NAME = os.getenv("INDEX_NAME")
+PGS_DBNAME = os.getenv("PGS_DBNAME")
+PGS_HOST = os.getenv("PGS_HOST")
+PGS_USER = os.getenv("PGS_USER")
+PGS_PASSWORD = os.getenv("PGS_PASSWORD")
 
 
 app = Flask(__name__)
+cors = CORS(app, origins=["http://185.50.202.156:8090"])
 
 
-@app.route('/api/v1/upload', methods=["POST"])
+@app.route('/api/upload', methods=["POST"])
+@cross_origin()
 def upload():
     try:
-        conn = psycopg2.connect("dbname=yappy user=postgres host=database password=pass")
+        conn = psycopg2.connect(
+            dbname=PGS_DBNAME,
+            host=PGS_HOST,
+            user=PGS_USER,
+            password=PGS_PASSWORD
+        )
         cur = conn.cursor()
 
         data = request.get_json(force=True)
@@ -36,24 +57,24 @@ def upload():
         return jsonify({"error": "This link already exists"})
 
 
-@app.route('/api/v1/search', methods=["POST"])
+@app.route('/api/search', methods=["GET"])
+@cross_origin()
 def search():
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     es = Elasticsearch(
         hosts=[
             {
-                'host': 'elastic',
+                'host': ELASTIC_HOST,
                 'port': 9200,
                 'scheme': 'https'
             }
         ],
-        basic_auth=('elastic', 'MDDIR5KipT5cI=TdSYU2'),
+        basic_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
         verify_certs=False
     )
 
-    data = request.get_json(force=True)
-    query = data['query']
+    query = request.args.get('query')
 
     search_body = {
         'from' : 0,
@@ -61,35 +82,45 @@ def search():
         'query': {
             'multi_match': {
                 'query': query,
-                'fields': ['speech', 'description']
+                'fields': ['speech', 'description^2'],
+                'analyzer': 'edge_ngram_analyzer'
             }
         }
     }
 
-    response = es.search(index='videos_index', body=search_body)
+    response = es.search(index=INDEX_NAME, body=search_body)
     results = response['hits']['hits']
 
-    return jsonify({'results': results})
+    return jsonify({'results': list(map(clean_search_result, results))})
 
 
-@app.route('/api/v1/autocomplete', methods=["POST"])
+def clean_search_result(rec):
+    return {
+        'link': rec['_source']['link'],
+        'likes': rec['_source']['likes'],
+        'speech': rec['_source']['speech'],
+        'description': rec['_source']['description'],
+    }
+
+
+@app.route('/api/autocomplete', methods=["GET"])
+@cross_origin()
 def autocomplete():
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     es = Elasticsearch(
         hosts=[
             {
-                'host': 'elastic',
+                'host': ELASTIC_HOST,
                 'port': 9200,
                 'scheme': 'https'
             }
         ],
-        basic_auth=('elastic', 'MDDIR5KipT5cI=TdSYU2'),
+        basic_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
         verify_certs=False
     )
 
-    data = request.get_json(force=True)
-    query = data['query']
+    query = request.args.get('query')
 
     suggest_body = {
         "size": 5,
@@ -107,8 +138,17 @@ def autocomplete():
         }
     }
 
-    response = es.search(index='videos_index', body=suggest_body)
+    response = es.search(index=INDEX_NAME, body=suggest_body)
     results = response['hits']['hits']
 
-    return jsonify({'results': results})
+    return jsonify({'results': list(map(clean_autocomplete_result, results))})
 
+def clean_autocomplete_result(rec):
+    if 'speech' in rec['highlight']:
+        return {
+            'text': rec['highlight']['speech'][0]
+        }
+    
+    return {
+        'text': rec['highlight']['description'][0]
+    }
